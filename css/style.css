@@ -1,0 +1,256 @@
+/* ---------------------------------------------------------------
+   Base
+--------------------------------------------------------------- */
+
+:root {
+  --color-bg: #f5f4f2;
+  --color-text: #111111;
+  --color-text-muted: #6b6b6b;
+  --color-overlay: rgba(0, 0, 0, 0.55);
+  --header-height: 64px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------
+   Header
+--------------------------------------------------------------- */
+
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  padding: 0 var(--gutter);
+  color: #ffffff;
+  mix-blend-mode: difference;
+}
+
+.site-header__name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.site-header__info {
+  font-size: 15px;
+  font-weight: 500;
+  color: inherit;
+  letter-spacing: 0.01em;
+}
+
+/* ---------------------------------------------------------------
+   Projects — each one full viewport width, image + bottom overlay
+--------------------------------------------------------------- */
+
+.projects {
+  display: flex;
+  flex-direction: column;
+}
+
+.project {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 480px;
+  overflow: hidden;
+  display: block;
+}
+
+.project__media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s ease;
+}
+
+/* Placeholder background used until a real image is supplied.
+   Safe to delete once every project has a <img> with a real src. */
+.project__media--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.project:hover .project__media {
+  transform: scale(1.03);
+}
+
+.project__scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 45%;
+  background: linear-gradient(to top, var(--color-overlay), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+
+.project__caption {
+  position: absolute;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  color: #ffffff;
+}
+
+.project__title {
+  margin: 0;
+  font-size: clamp(20px, 2.6vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.project__info {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+@media (max-width: 640px) {
+  .project {
+    height: 70vh;
+    min-height: 380px;
+  }
+
+  .project__caption {
+    bottom: 20px;
+  }
+}
+
+.noscript-note {
+  padding: calc(var(--header-height) + 40px) var(--gutter) 40px;
+  color: var(--color-text-muted);
+}
+
+/* ---------------------------------------------------------------
+   Info panel
+--------------------------------------------------------------- */
+
+.info-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(420px, 100%);
+  background: var(--color-bg);
+  z-index: 200;
+  padding: 96px var(--gutter) 40px;
+  transform: translateX(100%);
+  transition: transform 0.35s ease;
+  overflow-y: auto;
+}
+
+.info-panel[data-open] {
+  transform: translateX(0);
+}
+
+.info-panel__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+  z-index: 150;
+}
+
+.info-panel__backdrop[data-open] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.info-panel__close {
+  position: absolute;
+  top: 20px;
+  right: var(--gutter);
+  font-size: 28px;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.info-panel h2 {
+  margin: 0 0 16px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.info-panel h3 {
+  margin: 32px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.info-panel p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.info-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.info-panel__list li {
+  margin-bottom: 6px;
+}
+
+.info-panel__list a {
+  font-size: 15px;
+  border-bottom: 1px solid transparent;
+}
+
+.info-panel__list a:hover {
+  border-bottom-color: currentColor;
+}

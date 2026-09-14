@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ilana Tschiptschin — Portfolio</title>
+  <meta name="description" content="Portfolio of Ilana Tschiptschin." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <a href="#top" class="site-header__name">Ilana Tschiptschin</a>
+    <button type="button" class="site-header__info" data-info-toggle aria-haspopup="dialog" aria-expanded="false" aria-controls="info-panel">
+      Info
+    </button>
+  </header>
+
+  <main id="top" class="projects" data-projects>
+    <!-- Project entries are injected by js/main.js from the data list in that file. -->
+    <noscript>
+      <p class="noscript-note">Enable JavaScript to view the project list, or edit js/main.js to render static markup.</p>
+    </noscript>
+  </main>
+
+  <div class="info-panel" id="info-panel" data-info-panel role="dialog" aria-modal="true" aria-label="Info" aria-hidden="true">
+    <button type="button" class="info-panel__close" data-info-close aria-label="Close info">&times;</button>
+    <div class="info-panel__content">
+      <h2>Ilana Tschiptschin</h2>
+      <p>
+        Replace this paragraph with a short bio — what you do, where you're
+        based, and the kind of work you take on.
+      </p>
+
+      <h3>Contact</h3>
+      <ul class="info-panel__list">
+        <li><a href="mailto:hello@example.com">hello@example.com</a></li>
+        <li><a href="tel:+00000000000">+00 000 000 0000</a></li>
+      </ul>
+
+      <h3>Elsewhere</h3>
+      <ul class="info-panel__list">
+        <li><a href="#" target="_blank" rel="noopener">Instagram</a></li>
+        <li><a href="#" target="_blank" rel="noopener">LinkedIn</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="info-panel__backdrop" data-info-backdrop></div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
