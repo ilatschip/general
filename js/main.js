@@ -48,8 +48,9 @@ function renderProjects() {
 
       return `
         <article class="project">
-          ${media}
-          <div class="project__scrim"></div>
+          <div class="project__frame">
+            ${media}
+          </div>
           <div class="project__caption">
             <h2 class="project__title">${escapeHtml(project.title)}</h2>
             <p class="project__info">${escapeHtml(project.info)}</p>
