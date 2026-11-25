@@ -1,0 +1,510 @@
+<title>Folded Grid Generator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: control column on the left, the sheet as the object on the right; stacks on phones. */
+  :root {
+    --bg: #eceef0;
+    --panel: #f8f9fa;
+    --fg: #16181b;
+    --muted: #68707a;
+    --rule: #d3d7db;
+    --accent: #1d3bc4;
+    --paper: #fbfbfa;
+    --ink: #121314;
+    --floor: #c9cbcd;
+    --font-display: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111315; --panel: #181b1e; --fg: #e6e8ea; --muted: #8b939b;
+      --rule: #2a2f34; --accent: #8ea0ff; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111315; --panel: #181b1e; --fg: #e6e8ea; --muted: #8b939b;
+    --rule: #2a2f34; --accent: #8ea0ff; color-scheme: dark;
+  }
+
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-display);
+    font-size: 14px;
+  }
+  .app {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 24px;
+    min-height: 100%;
+    padding-block: 20px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    box-sizing: border-box;
+  }
+  aside {
+    display: flex; flex-direction: column; gap: 18px;
+    min-width: 0;
+  }
+  header h1 {
+    font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 4px;
+    text-wrap: balance;
+  }
+  header p { margin: 0; color: var(--muted); line-height: 1.45; }
+
+  .label {
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted);
+  }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  button {
+    font: 500 13px var(--font-display);
+    color: var(--fg); background: transparent;
+    border: 1px solid var(--rule); border-radius: 3px;
+    padding: 6px 10px; cursor: pointer;
+  }
+  button:hover { border-color: var(--fg); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+  fieldset {
+    border: 0; border-top: 1px solid var(--rule); margin: 0; padding: 12px 0 0;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  legend { padding: 0 8px 0 0; }
+  .row { display: grid; grid-template-columns: 88px minmax(0, 1fr) 44px; align-items: center; gap: 10px; }
+  .row label { font-size: 13px; }
+  .row output {
+    font-family: var(--font-mono); font-size: 12px; text-align: right;
+    font-variant-numeric: tabular-nums; color: var(--muted);
+  }
+  input[type="range"] { width: 100%; accent-color: var(--fg); margin: 0; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+  .toggle input { accent-color: var(--fg); margin: 0; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seed { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .hint { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.45; }
+  kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--rule); border-radius: 2px; padding: 0 4px; }
+
+  main {
+    min-width: 0;
+    display: flex; align-items: flex-start; justify-content: center;
+  }
+  .stage {
+    position: sticky; top: calc(20px + env(safe-area-inset-top, 0px));
+    width: 100%; max-width: min(100%, calc((100vh - 40px) * 0.8));
+    aspect-ratio: 4 / 5;
+  }
+  canvas {
+    display: block; width: 100%; height: 100%;
+    background: var(--paper);
+    box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 30px rgba(0,0,0,.08);
+  }
+
+  @media (max-width: 760px) {
+    .app { grid-template-columns: minmax(0, 1fr); }
+    main { order: -1; }
+    .stage { position: static; max-width: 100%; }
+  }
+</style>
+
+<div class="app">
+  <aside>
+    <header>
+      <h1>Folded Grid</h1>
+      <p>A ruled sheet, rotated, folded along creases and let go of. Every change redraws; the seed fixes where folds and ripples fall.</p>
+    </header>
+
+    <div>
+      <div class="label" style="margin-bottom:8px">Presets</div>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <div id="controls" style="display:flex;flex-direction:column;gap:16px"></div>
+
+    <div class="actions">
+      <button class="primary" id="randomize" type="button">Randomize</button>
+      <button id="reseed" type="button">New seed</button>
+      <button id="save" type="button">Save PNG</button>
+    </div>
+    <div class="seed" id="seedLabel"></div>
+    <p class="hint"><kbd>R</kbd> randomize · <kbd>S</kbd> new seed · <kbd>Space</kbd> animate</p>
+  </aside>
+
+  <main>
+    <div class="stage"><canvas id="c" aria-label="Generated grid drawing" role="img"></canvas></div>
+  </main>
+</div>
+
+<script>
+(() => {
+  // ---------- seeded randomness + Perlin noise ----------
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function makeNoise(seed) {
+    const r = mulberry32(seed * 9301 + 49297);
+    const perm = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) perm[i] = i;
+    for (let i = 255; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const t = perm[i]; perm[i] = perm[j]; perm[j] = t; }
+    const p = new Uint8Array(512);
+    for (let i = 0; i < 512; i++) p[i] = perm[i & 255];
+    const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+    const grad = (h, x, y) => {
+      switch (h & 7) {
+        case 0: return x + y; case 1: return -x + y; case 2: return x - y; case 3: return -x - y;
+        case 4: return x; case 5: return -x; case 6: return y; default: return -y;
+      }
+    };
+    const n2 = (x, y) => {
+      const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+      x -= Math.floor(x); y -= Math.floor(y);
+      const u = fade(x), v = fade(y);
+      const a = p[X] + Y, b = p[X + 1] + Y;
+      const l1 = grad(p[a], x, y) + u * (grad(p[b], x - 1, y) - grad(p[a], x, y));
+      const l2 = grad(p[a + 1], x, y - 1) + u * (grad(p[b + 1], x - 1, y - 1) - grad(p[a + 1], x, y - 1));
+      return (l1 + v * (l2 - l1)) * 0.7;
+    };
+    n2.fbm = (x, y) => n2(x, y) + 0.5 * n2(x * 2.03 + 17, y * 2.03 - 9) + 0.25 * n2(x * 4.1 - 31, y * 4.1 + 5);
+    return n2;
+  }
+
+  // ---------- parameters ----------
+  const schema = [
+    { group: 'Lines', items: [
+      { id: 'angleA', label: 'Angle A', min: -90, max: 90, step: 1, unit: '°' },
+      { id: 'angleB', label: 'Angle B', min: -90, max: 90, step: 1, unit: '°' },
+      { id: 'spacing', label: 'Spacing', min: 10, max: 140, step: 1 },
+      { id: 'weightA', label: 'Weight A', min: 0.2, max: 4, step: 0.1 },
+      { id: 'weightB', label: 'Weight B', min: 0.2, max: 4, step: 0.1 },
+    ], toggles: [ { id: 'cross', label: 'Second family' } ] },
+    { group: 'Fold', items: [
+      { id: 'folds', label: 'Creases', min: 0, max: 10, step: 1 },
+      { id: 'depth', label: 'Depth', min: 0, max: 85, step: 1, unit: '°' },
+      { id: 'softness', label: 'Softness', min: 0, max: 1, step: 0.01 },
+      { id: 'tilt', label: 'View tilt', min: 0, max: 0.9, step: 0.01 },
+    ] },
+    { group: 'Organic', items: [
+      { id: 'warp', label: 'Warp', min: 0, max: 1, step: 0.01 },
+      { id: 'warpScale', label: 'Warp scale', min: 0.3, max: 6, step: 0.1 },
+      { id: 'drape', label: 'Drape', min: 0, max: 1, step: 0.01 },
+      { id: 'wobble', label: 'Wobble', min: 0, max: 1, step: 0.01 },
+    ] },
+    { group: 'Scene', items: [], toggles: [
+      { id: 'floor', label: 'Floor' },
+      { id: 'animate', label: 'Animate' },
+    ] },
+  ];
+
+  const presets = {
+    Sheet:   { angleA: 45, angleB: -45, spacing: 70, weightA: 0.9, weightB: 0.5, cross: true,  folds: 0, depth: 0,  softness: 0.2,  tilt: 0,    warp: 0,    warpScale: 1.5, drape: 0,    wobble: 0,    floor: false },
+    Screen:  { angleA: 0,   angleB: 90,  spacing: 15, weightA: 2.2, weightB: 1,   cross: false, folds: 3, depth: 40, softness: 0.22, tilt: 0.32, warp: 0.04, warpScale: 1.2, drape: 0.6,  wobble: 0,    floor: true  },
+    Origami: { angleA: 45, angleB: -45, spacing: 42, weightA: 1.1, weightB: 0.6, cross: true,  folds: 6, depth: 55, softness: 0.03, tilt: 0.5,  warp: 0,    warpScale: 1.5, drape: 0,    wobble: 0,    floor: false },
+    Textile: { angleA: 30, angleB: -60, spacing: 26, weightA: 1,   weightB: 0.6, cross: true,  folds: 4, depth: 32, softness: 0.7,  tilt: 0.3,  warp: 0.22, warpScale: 1.8, drape: 0.75, wobble: 0.15, floor: true  },
+    Dune:    { angleA: 6,  angleB: -80, spacing: 17, weightA: 1.3, weightB: 0.6, cross: false, folds: 2, depth: 22, softness: 0.85, tilt: 0.2,  warp: 0.45, warpScale: 1.4, drape: 0.3,  wobble: 0.08, floor: false },
+  };
+
+  const P = Object.assign({ seed: 1307, animate: false }, presets.Screen);
+  try {
+    const saved = JSON.parse(localStorage.getItem('folded-grid') || 'null');
+    if (saved) Object.assign(P, saved, { animate: false });
+  } catch (e) {}
+  const persist = () => { try { localStorage.setItem('folded-grid', JSON.stringify(P)); } catch (e) {} };
+
+  // ---------- build controls ----------
+  const controls = document.getElementById('controls');
+  const inputs = {};
+  const fmt = (it, v) => (it.step < 1 ? (+v).toFixed(it.step < 0.1 ? 2 : 1) : v) + (it.unit || '');
+  for (const g of schema) {
+    const fs = document.createElement('fieldset');
+    fs.innerHTML = `<legend class="label">${g.group}</legend>`;
+    for (const it of g.items) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<label for="p-${it.id}">${it.label}</label>
+        <input type="range" id="p-${it.id}" min="${it.min}" max="${it.max}" step="${it.step}">
+        <output id="o-${it.id}"></output>`;
+      fs.appendChild(row);
+      const inp = row.querySelector('input'), out = row.querySelector('output');
+      inp.addEventListener('input', () => { P[it.id] = +inp.value; out.textContent = fmt(it, inp.value); clearPreset(); changed(); });
+      inputs[it.id] = { inp, out, it };
+    }
+    if (g.toggles) {
+      const wrap = document.createElement('div');
+      wrap.className = 'toggles';
+      for (const t of g.toggles) {
+        const lab = document.createElement('label');
+        lab.className = 'toggle';
+        lab.innerHTML = `<input type="checkbox" id="p-${t.id}"> ${t.label}`;
+        const inp = lab.querySelector('input');
+        inp.addEventListener('change', () => {
+          P[t.id] = inp.checked;
+          if (t.id === 'animate') { syncAnimation(); } else { clearPreset(); }
+          changed();
+        });
+        wrap.appendChild(lab);
+        inputs[t.id] = { inp, toggle: true };
+      }
+      fs.appendChild(wrap);
+    }
+    controls.appendChild(fs);
+  }
+  function syncInputs() {
+    for (const k in inputs) {
+      const c = inputs[k];
+      if (c.toggle) c.inp.checked = !!P[k];
+      else { c.inp.value = P[k]; c.out.textContent = fmt(c.it, P[k]); }
+    }
+    inputs.angleB.inp.disabled = inputs.weightB.inp.disabled = !P.cross;
+    document.getElementById('seedLabel').textContent = 'seed ' + P.seed;
+  }
+
+  const presetBox = document.getElementById('presets');
+  const presetBtns = {};
+  for (const name in presets) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = name; b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => { Object.assign(P, presets[name]); markPreset(name); syncInputs(); changed(); });
+    presetBox.appendChild(b); presetBtns[name] = b;
+  }
+  function markPreset(name) { for (const n in presetBtns) presetBtns[n].setAttribute('aria-pressed', n === name ? 'true' : 'false'); }
+  function clearPreset() { markPreset(null); }
+
+  // ---------- geometry ----------
+  const PW = 1000, PH = 1250;  // the sheet, in paper units
+  let noise = makeNoise(P.seed), noiseSeed = P.seed;
+
+  // Fold model: the sheet's horizontal axis u bends around vertical creases.
+  // theta(u) is the panel angle; integrating cos/sin gives the 3D path (x3, z3).
+  function buildFold() {
+    const r = mulberry32(P.seed);
+    const n = P.folds;
+    const creases = [];
+    for (let k = 0; k < n; k++) creases.push(PW * (k + 1 + (r() - 0.5) * 0.7) / (n + 1));
+    creases.sort((a, b) => a - b);
+    const d = P.depth * Math.PI / 180;
+    let sign = r() < 0.5 ? 1 : -1;
+    const angles = [sign * d * (0.4 + 0.6 * r())];
+    for (let k = 0; k < n; k++) { sign = -sign; angles.push(sign * d * (0.45 + 0.55 * r())); }
+    const minPanel = PW / (n + 1);
+    const w = Math.max(1, P.softness * minPanel * 0.9);
+
+    const x3 = new Float32Array(PW + 1), z3 = new Float32Array(PW + 1), th = new Float32Array(PW + 1), prox = new Float32Array(PW + 1);
+    let x = 0, z = 0;
+    for (let u = 0; u <= PW; u++) {
+      let t = angles[0], pr = 0;
+      for (let k = 0; k < n; k++) {
+        let s = (u - creases[k]) / w + 0.5;
+        s = s < 0 ? 0 : s > 1 ? 1 : s;
+        t += (angles[k + 1] - angles[k]) * s * s * (3 - 2 * s);
+        const q = (u - creases[k]) / 70;
+        pr = Math.max(pr, Math.exp(-q * q));
+      }
+      th[u] = t; prox[u] = pr;
+      if (u > 0) { x += Math.cos(t); z += Math.sin(t); }
+      x3[u] = x; z3[u] = z;
+    }
+    return { x3, z3, th, prox };
+  }
+
+  function sampleFold(F, u) {
+    if (u <= 0) return [F.x3[0] + u * Math.cos(F.th[0]), F.z3[0] + u * Math.sin(F.th[0]), F.prox[0]];
+    if (u >= PW) { const e = u - PW; return [F.x3[PW] + e * Math.cos(F.th[PW]), F.z3[PW] + e * Math.sin(F.th[PW]), F.prox[PW]]; }
+    const i = u | 0, f = u - i;
+    return [F.x3[i] + (F.x3[i + 1] - F.x3[i]) * f, F.z3[i] + (F.z3[i + 1] - F.z3[i]) * f, F.prox[i] + (F.prox[i + 1] - F.prox[i]) * f];
+  }
+
+  // Lines of one family across the sheet, clipped to the paper rectangle.
+  function familyLines(angleDeg, spacing, phase) {
+    const a = angleDeg * Math.PI / 180;
+    const dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx;
+    const corners = [[0, 0], [PW, 0], [0, PH], [PW, PH]].map(([x, y]) => x * nx + y * ny);
+    const lo = Math.min(...corners), hi = Math.max(...corners);
+    const lines = [];
+    for (let k = Math.ceil((lo - phase) / spacing) * spacing + phase; k <= hi; k += spacing) {
+      const ox = nx * k, oy = ny * k;
+      let t0 = -Infinity, t1 = Infinity;
+      for (const [p, d, mn, mx] of [[ox, dx, 0, PW], [oy, dy, 0, PH]]) {
+        if (Math.abs(d) < 1e-9) { if (p < mn || p > mx) { t0 = 1; t1 = 0; } continue; }
+        let a0 = (mn - p) / d, a1 = (mx - p) / d;
+        if (a0 > a1) [a0, a1] = [a1, a0];
+        t0 = Math.max(t0, a0); t1 = Math.min(t1, a1);
+      }
+      if (t1 - t0 > 1) lines.push({ ox, oy, dx, dy, nx, ny, t0, t1, k });
+    }
+    return lines;
+  }
+
+  // ---------- render ----------
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  let time = 0;
+
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function render() {
+    if (noiseSeed !== P.seed) { noise = makeNoise(P.seed); noiseSeed = P.seed; }
+    const dpr = window.devicePixelRatio || 1;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    if (!cw || !ch) return;
+    if (canvas.width !== Math.round(cw * dpr) || canvas.height !== Math.round(ch * dpr)) {
+      canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const paper = cssVar('--paper') || '#fbfbfa', ink = cssVar('--ink') || '#121314', floorCol = cssVar('--floor') || '#c9cbcd';
+    ctx.fillStyle = paper; ctx.fillRect(0, 0, cw, ch);
+
+    const F = buildFold();
+    const tilt = P.tilt;
+    const drapeAmp = P.drape * 110;
+    const warpAmp = P.warp * PH * 0.12;
+    const wf = P.warpScale * 0.0016;
+
+    // stable bounds from the fold geometry, padded for the noise
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (let u = 0; u <= PW; u += 5) {
+      minX = Math.min(minX, F.x3[u]); maxX = Math.max(maxX, F.x3[u]);
+      minZ = Math.min(minZ, F.z3[u]); maxZ = Math.max(maxZ, F.z3[u]);
+    }
+    const pad = warpAmp * 0.9 + 10;
+    const bx0 = minX - pad, bx1 = maxX + pad;
+    const by0 = -maxZ * tilt - pad, by1 = PH - minZ * tilt + drapeAmp * 1.6 + pad;
+    const margin = Math.min(cw, ch) * 0.09;
+    const sc = Math.min((cw - 2 * margin) / (bx1 - bx0), (ch - 2 * margin) / (by1 - by0));
+    const offX = (cw - (bx1 - bx0) * sc) / 2 - bx0 * sc;
+    const offY = (ch - (by1 - by0) * sc) / 2 - by0 * sc;
+
+    if (P.floor) {
+      const horizon = offY + (PH * 0.6 - minZ * tilt * 0.5) * sc;
+      const g = ctx.createLinearGradient(0, horizon, 0, ch);
+      g.addColorStop(0, floorCol); g.addColorStop(1, paper);
+      ctx.fillStyle = g; ctx.fillRect(0, horizon, cw, ch - horizon);
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = floorCol; ctx.fillRect(0, horizon, cw, 1);
+      ctx.globalAlpha = 1;
+    }
+
+    const T = time;
+    const project = (u, y, lineK, t, nx, ny) => {
+      // hand wobble along the line normal
+      if (P.wobble > 0) {
+        const w = P.wobble * 7 * noise(t * 0.03 + T * 3, lineK * 0.071 + 40);
+        u += nx * w; y += ny * w;
+      }
+      // field warp, in paper space
+      if (warpAmp > 0) {
+        const du = warpAmp * noise.fbm(u * wf + 11.3 + T, y * wf - 4.1);
+        const dv = warpAmp * noise.fbm(u * wf - 23.7, y * wf + 8.9 + T);
+        u += du; y += dv;
+      }
+      // fold
+      const [x3, z3, prox] = sampleFold(F, u);
+      let X = x3, Y = y - z3 * tilt;
+      // drape: gravity ripples that grow toward the bottom and gather at the creases
+      if (drapeAmp > 0) {
+        const v = Math.max(0, Math.min(1.2, y / PH));
+        const a = drapeAmp * Math.pow(v, 2.1) * (0.55 + 0.9 * prox);
+        Y += a * noise.fbm(u * 0.0075 + T * 2, y * 0.0011 + 3.3);
+        X += a * 0.18 * noise(u * 0.006 - 9, y * 0.002 + T);
+      }
+      return [offX + X * sc, offY + Y * sc];
+    };
+
+    const families = [{ angle: P.angleA, weight: P.weightA, alpha: 0.92, phase: 0 }];
+    if (P.cross) families.push({ angle: P.angleB, weight: P.weightB, alpha: 0.7, phase: P.spacing * 0.5 });
+
+    ctx.strokeStyle = ink;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const step = 3;
+    const lwScale = Math.max(0.55, Math.min(1.4, sc * 1.25));
+    for (const fam of families) {
+      ctx.globalAlpha = fam.alpha;
+      ctx.lineWidth = fam.weight * lwScale;
+      for (const L of familyLines(fam.angle, P.spacing, fam.phase)) {
+        ctx.beginPath();
+        const n = Math.max(2, Math.ceil((L.t1 - L.t0) / step));
+        for (let i = 0; i <= n; i++) {
+          const t = L.t0 + (L.t1 - L.t0) * i / n;
+          const [px, py] = project(L.ox + L.dx * t, L.oy + L.dy * t, L.k, t, L.nx, L.ny);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------- loop / events ----------
+  let raf = 0, queued = false;
+  function changed() { persist(); syncInputs(); if (!P.animate && !queued) { queued = true; requestAnimationFrame(() => { queued = false; render(); }); } }
+  function tick() { time += 0.0025; render(); raf = requestAnimationFrame(tick); }
+  function syncAnimation() {
+    cancelAnimationFrame(raf);
+    if (P.animate) raf = requestAnimationFrame(tick);
+  }
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  function randomize() {
+    const cross = Math.random() < 0.55;
+    const angleA = Math.round(Math.random() < 0.35 ? rnd(-8, 8) : rnd(-90, 90));
+    Object.assign(P, {
+      seed: Math.floor(Math.random() * 99999),
+      angleA,
+      angleB: Math.round(Math.random() < 0.5 ? (angleA + 90 > 90 ? angleA - 90 : angleA + 90) : rnd(-90, 90)),
+      cross,
+      spacing: Math.round(cross ? rnd(22, 90) : rnd(11, 40)),
+      weightA: +rnd(0.6, cross ? 1.6 : 2.6).toFixed(1),
+      weightB: +rnd(0.3, 1.1).toFixed(1),
+      folds: Math.floor(rnd(0, 8)),
+      depth: Math.round(rnd(10, 65)),
+      softness: +rnd(0, 1).toFixed(2),
+      tilt: +rnd(0.1, 0.6).toFixed(2),
+      warp: +(Math.random() < 0.5 ? rnd(0, 0.1) : rnd(0.1, 0.5)).toFixed(2),
+      warpScale: +rnd(0.8, 3.5).toFixed(1),
+      drape: +rnd(0, 0.9).toFixed(2),
+      wobble: +(Math.random() < 0.6 ? 0 : rnd(0.05, 0.35)).toFixed(2),
+      floor: Math.random() < 0.35,
+    });
+    clearPreset(); changed();
+  }
+  function reseed() { P.seed = Math.floor(Math.random() * 99999); changed(); }
+
+  document.getElementById('randomize').addEventListener('click', randomize);
+  document.getElementById('reseed').addEventListener('click', reseed);
+  document.getElementById('save').addEventListener('click', () => {
+    canvas.toBlob(b => {
+      if (!b) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = `folded-grid-${P.seed}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    });
+  });
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'r' || e.key === 'R') randomize();
+    else if (e.key === 's' || e.key === 'S') reseed();
+    else if (e.key === ' ' && e.target.tagName !== 'BUTTON') { e.preventDefault(); P.animate = !P.animate; syncAnimation(); changed(); }
+  });
+  new ResizeObserver(() => { if (!P.animate) render(); }).observe(canvas);
+
+  const saved = (() => { try { return localStorage.getItem('folded-grid'); } catch (e) { return null; } })();
+  if (!saved) markPreset('Screen');
+  syncInputs();
+  render();
+})();
+</script>
