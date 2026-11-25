@@ -134,6 +134,7 @@
       <button id="saveSvg" type="button">Save SVG</button>
       <button id="save" type="button">Save PNG</button>
     </div>
+    <label class="toggle"><input type="checkbox" id="p-plotOnly"> Lines only in SVG (for plotting)</label>
     <div class="seed"><span id="seedLabel"></span> <span id="saveStatus" role="status"></span></div>
     <p class="hint"><kbd>R</kbd> randomize · <kbd>S</kbd> new seed · <kbd>Space</kbd> animate</p>
   </aside>
@@ -467,21 +468,26 @@
     const C = colors();
     const G = build(W, H);
     const r = v => Math.round(v * 10) / 10;
-    const out = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
-      `<rect width="${W}" height="${H}" fill="${C.paper}"/>`];
-    if (G.horizon !== null) {
+    const plot = !!P.plotOnly;
+    const out = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
+    if (!plot) out.push(`<rect width="${W}" height="${H}" fill="${C.paper}"/>`);
+    if (!plot && G.horizon !== null) {
       out.push(`<defs><linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.floor}"/><stop offset="1" stop-color="${C.paper}"/></linearGradient></defs>`,
         `<rect x="0" y="${r(G.horizon)}" width="${W}" height="${r(H - G.horizon)}" fill="url(#floor)"/>`);
     }
-    for (const grp of G.groups) {
-      out.push(`<g fill="none" stroke="${C.ink}" stroke-opacity="${grp.alpha}" stroke-width="${r(grp.width * 100) / 100}" stroke-linecap="round" stroke-linejoin="round">`);
+    G.groups.forEach((grp, gi) => {
+      // plot mode: solid black, one group per line family so each can get its own pen
+      const id = gi === 0 ? 'family-a' : 'family-b';
+      out.push(plot
+        ? `<g id="${id}" fill="none" stroke="#000" stroke-width="${r(grp.width * 100) / 100}" stroke-linecap="round" stroke-linejoin="round">`
+        : `<g id="${id}" fill="none" stroke="${C.ink}" stroke-opacity="${grp.alpha}" stroke-width="${r(grp.width * 100) / 100}" stroke-linecap="round" stroke-linejoin="round">`);
       for (const pts of grp.lines) {
         let d = `M${r(pts[0])} ${r(pts[1])}L`;
         for (let i = 2; i < pts.length; i += 2) d += `${r(pts[i])} ${r(pts[i + 1])} `;
         out.push(`<path d="${d.trim()}"/>`);
       }
       out.push('</g>');
-    }
+    });
     out.push('</svg>');
     return out.join('\n');
   }
@@ -554,8 +560,11 @@
     canvas.toBlob(b => { if (b) saveFile(`folded-grid-${P.seed}.png`, b); });
   });
   document.getElementById('saveSvg').addEventListener('click', () => {
-    saveFile(`folded-grid-${P.seed}.svg`, new Blob([toSVG()], { type: 'image/svg+xml' }));
+    saveFile(`folded-grid-${P.seed}${P.plotOnly ? '-plot' : ''}.svg`, new Blob([toSVG()], { type: 'image/svg+xml' }));
   });
+  const plotBox = document.getElementById('p-plotOnly');
+  plotBox.checked = !!P.plotOnly;
+  plotBox.addEventListener('change', () => { P.plotOnly = plotBox.checked; persist(); });
   window.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
